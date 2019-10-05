@@ -8,3 +8,7 @@ The aim of this project is to provide a _lightweight_ client HTTP cache for the
 It’s implemented purely on top of Spring’s interfaces and doesn’t use any “heavy” caching library.
 
 At this point this is highly experimental and still in the early active development phase
+
+# TODO
+* Add support for conditional requests.
+*  Add support for response revalidation.
