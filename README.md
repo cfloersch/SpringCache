@@ -11,4 +11,4 @@ At this point this is highly experimental and still in the early active developm
 
 # TODO
 * Add support for conditional requests.
-*  Add support for response revalidation.
+* Add support for response revalidation.
