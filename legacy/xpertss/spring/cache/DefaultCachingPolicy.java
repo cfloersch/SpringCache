@@ -219,6 +219,7 @@ public class DefaultCachingPolicy implements CachingPolicy {
    {
       CacheControl cc = parseCacheControl(response.getHeaders());
 
+      // TODO explicitly non-cacheable should be no-store OR private in shared cache
       return cc.isNoStore() || cc.isNoCache() || (sharedCache && cc.isPrivate()) || cc.getMaxAge(sharedCache) == 0;
    }
 
