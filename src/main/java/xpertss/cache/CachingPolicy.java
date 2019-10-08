@@ -9,6 +9,8 @@ package xpertss.cache;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 
+import java.util.Date;
+
 /**
  * Policy that determines if a request can be served from cache or a response
  * can be cached.

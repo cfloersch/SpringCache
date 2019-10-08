@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 
+
 /**
  * A shared caching policy will make determinations based on the notion that this
  * cache is shared. For example it will not allow items marked as private to be
@@ -36,8 +37,10 @@ public class SharedCachingPolicy extends AbstractCachingPolicy {
       return isResponseCacheable(response);
    }
 
+
    protected boolean isExplicitlyNonCacheable(CacheControl cc)
    {
       return super.isExplicitlyNonCacheable(cc) || cc.isPrivate();
    }
+
 }

@@ -58,14 +58,17 @@ public abstract class AbstractCachingPolicy implements CachingPolicy {
          throw new IllegalStateException(ex);
       }
 
-      CacheControl cc = CacheControl.valueOf(response.getHeaders());
+      CacheControl cc = CacheControl.valueOf(headers);
       if(isExplicitlyNonCacheable(cc)) {
          return false;
       }
 
+      if(headers.getContentLength() < 0) {
+         return false;
+      }
 
       try {
-         if(response.getHeaders().getDate() < 0) {
+         if(headers.getDate() < 0) {
             return false;
          }
       } catch(IllegalArgumentException ex) {

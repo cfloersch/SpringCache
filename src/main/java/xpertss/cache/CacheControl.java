@@ -244,22 +244,31 @@ public class CacheControl {
    }
 
    /**
-    * Returns <tt>max-age</tt>, or <tt>s-maxage</tt> according to whether
-    * considering a shared cache, or a private cache. If shared cache and the
+    * Returns <tt>max-age</tt>, or <tt>s-maxage</tt> according to whether the
+    * cache is a shared cache, or a private cache. If shared cache and the
     * <tt>s-maxage</tt> is negative (i.e. not set), then returns
     * <tt>max-age</tt> instead.
     *
-    * @param sharedCache <tt>true</tt> for a shared cache,
-    *                    or <tt>false</tt> for a private cache
+    * @param type the cache type, used to determine the correct age parameter
     * @return A {@link #maxAge}, or {@link #sMaxAge} according to the given
-    * sharedCache argument.
+    * cache type argument.
     */
-   public int getMaxAge(boolean sharedCache)
+   public int getMaxAge(CacheType type)
    {
-      if(sharedCache) {
+      if(type == CacheType.Shared) {
          return sMaxAge >= 0 ? sMaxAge : maxAge;
       } else {
          return maxAge;
       }
    }
+
+   public boolean getRevalidate(CacheType type)
+   {
+      if(type == CacheType.Shared) {
+         return isProxyRevalidate || isMustRevalidate;
+      } else {
+         return isMustRevalidate;
+      }
+   }
+
 }

@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 
+
 /**
  * A private caching policy will allow items marked as private to be cached and
  * will evaluate must-revalidate and max-age as opposed to s-max-age and
@@ -29,6 +30,8 @@ public class PrivateCachingPolicy extends AbstractCachingPolicy {
 
       return isResponseCacheable(response);
    }
+
+
 
 
 }

@@ -6,6 +6,9 @@
  */
 package xpertss.cache;
 
+import com.xpertss.cache.HttpResponseCache;
+import com.xpertss.cache.store.CacheStore;
+
 import xpertss.lang.Numbers;
 import xpertss.lang.Objects;
 import xpertss.util.Platform;
@@ -138,11 +141,11 @@ public final class CacheBuilder {
     * @throws IllegalArgumentException if any of the properties passed to the
     *    cache store are invalid
     */
-   public CacheStore build()
+   public ResponseCache build()
    {
       CacheParams params = new CacheParams(cacheSize, memorySize, maxMemorySize, maxItems);
       Path path = Objects.ifNull(diskStore, Platform.tempDir().resolve("cache"));
-      return new CacheStore(path, type, params);
+      return new HttpResponseCache(new CacheStore(path, params), type);
    }
 
 }

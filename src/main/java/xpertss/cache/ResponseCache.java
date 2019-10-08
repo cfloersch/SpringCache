@@ -9,6 +9,8 @@ package xpertss.cache;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 
+import java.io.IOException;
+
 /**
  * Represents an Http Response Cache.
  * <p/>
@@ -28,8 +30,9 @@ public interface ResponseCache {
     *
     * @param request the http request to get a cache response for
     * @return a previously cached cache response or {@code null}
+    * @throws IOException if an error occurs trying to fetch the cache
     */
-   public CacheResponse get(HttpRequest request);
+   public CacheResponse get(HttpRequest request) throws IOException;
 
    /**
     * This method will evaluate the request and response and determine if the response
@@ -40,7 +43,9 @@ public interface ResponseCache {
     * @param request the request to cache the response for
     * @param response the response to cache if cachable
     * @return a caching http response proxy or the supplied http response
+    * @throws IOException if an error occurs trying to create the cache
     */
-   public ClientHttpResponse cache(HttpRequest request, ClientHttpResponse response);
+   public ClientHttpResponse cache(HttpRequest request, ClientHttpResponse response)
+      throws IOException;
 
 }
