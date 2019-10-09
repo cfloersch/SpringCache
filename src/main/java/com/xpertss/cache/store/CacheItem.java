@@ -6,26 +6,38 @@
  */
 package com.xpertss.cache.store;
 
-import xpertss.lang.Objects;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import xpertss.cache.Visibility;
 import xpertss.time.Dates;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Date;
 
-// TODO Add no transform, stale-on-error, etc
+import static java.nio.file.StandardOpenOption.*;
 
-// TODO Add headers?
 public class CacheItem {
 
-   private Date cached, accessed = new Date();
+   private Date cached = new Date();
    private Date expires;
 
    private String eTag;
    private Date lastModifiedDate;
 
    private boolean conditional;
-   private ByteBuffer entity;
+   private boolean staleOnError;
+   private Visibility visibility;
 
+   private HttpHeaders headers;
+   private HttpStatus status;
+
+   private Path cacheFile;
+
+   // Technically isPublic, isPrivate, isConditional, isStale-While-Revalidate, isStale-If-Error could all be flags in a BitSet
 
    public CacheItem()
    {
@@ -44,18 +56,12 @@ public class CacheItem {
    }
 
 
-   public Date getAccessed()
-   {
-      return accessed;
-   }
 
-   public CacheItem withAccessed(Date accessed)
-   {
-      CacheItem copy = copy();
-      copy.accessed = Dates.gte(accessed, new Date(), "accessed");
-      return copy;
-   }
 
+   public boolean isExpired()
+   {
+      return expires.after(new Date());
+   }
 
    public Date getExpires()
    {
@@ -77,24 +83,10 @@ public class CacheItem {
    }
 
 
-   public boolean isExpired()
-   {
-      return expires.after(new Date());
-   }
 
 
 
-   public boolean isConditional()
-   {
-      return conditional;
-   }
 
-   public CacheItem withConditional(boolean conditional)
-   {
-      CacheItem copy = copy();
-      copy.conditional = conditional;
-      return copy;
-   }
 
 
    public Date getLastModifiedDate()
@@ -124,33 +116,129 @@ public class CacheItem {
 
 
 
-   // TODO I need to figure out how to handle the entity.
 
-   public ByteBuffer getEntity()
+   public boolean isConditional()
    {
-      return entity;
+      return conditional;
    }
 
-   public CacheItem withEntity(ByteBuffer entity)
+   public CacheItem withConditional(boolean conditional)
    {
       CacheItem copy = copy();
-      copy.entity = Objects.notNull(entity, "entity");
+      copy.conditional = conditional;
       return copy;
    }
+
+   public boolean isStaleOnError()
+   {
+      return staleOnError;
+   }
+
+   public CacheItem withStaleOnError(boolean staleOnError)
+   {
+      CacheItem copy = copy();
+      copy.staleOnError = staleOnError;
+      return copy;
+   }
+
+   public Visibility getVisibility()
+   {
+      return visibility;
+   }
+
+   public CacheItem withVisibility(Visibility visibility)
+   {
+      CacheItem copy = copy();
+      copy.visibility = visibility;
+      return copy;
+   }
+
+
+
+
+   public HttpStatus getStatus()
+   {
+      return status;
+   }
+
+   public CacheItem withHttpStatus(HttpStatus status)
+   {
+      CacheItem copy = copy();
+      copy.status = status;
+      return copy;
+   }
+
+
+   public HttpHeaders getHeaders()
+   {
+      HttpHeaders result = new HttpHeaders();
+      result.addAll(headers);
+      return result;
+   }
+
+   public CacheItem withHeaders(HttpHeaders headers)
+   {
+      CacheItem copy = copy();
+      copy.headers = headers;
+      return copy;
+   }
+
+
+
+
+
+   public Path getCacheFile()
+   {
+      return cacheFile;
+   }
+
+   public CacheItem withCacheFile(Path cacheFile)
+   {
+      CacheItem copy = copy();
+      copy.cacheFile = cacheFile;
+      return copy;
+   }
+
+
+
+
+
+
+   public InputStream newInput() throws IOException
+   {
+      return Files.newInputStream(cacheFile, READ);
+   }
+
+   public OutputStream newOutput() throws IOException
+   {
+      return Files.newOutputStream(cacheFile, CREATE_NEW, WRITE);
+   }
+
+   public void passivate()
+   {
+      try {
+         Files.deleteIfExists(cacheFile);
+      } catch(IOException e) {
+         /* TODO What to do with this */
+      }
+   }
+
+
    
-
-
 
    private CacheItem copy()
    {
       CacheItem copy = new CacheItem();
-      copy.accessed = accessed;
       copy.cached = cached;
       copy.expires = expires;
-      copy.conditional = conditional;
       copy.eTag = eTag;
       copy.lastModifiedDate = lastModifiedDate;
-      copy.entity = entity;
+      copy.conditional = conditional;
+      copy.staleOnError = staleOnError;
+      copy.visibility = visibility;
+      copy.headers = headers;
+      copy.status = status;
+      copy.cacheFile = cacheFile;
       return copy;
    }
 }

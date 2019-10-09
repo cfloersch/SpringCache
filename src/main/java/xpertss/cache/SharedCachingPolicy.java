@@ -10,6 +10,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 
+import java.io.IOException;
+
 
 /**
  * A shared caching policy will make determinations based on the notion that this
@@ -19,8 +21,14 @@ import org.springframework.http.client.ClientHttpResponse;
  */
 public class SharedCachingPolicy extends AbstractCachingPolicy {
 
+   public SharedCachingPolicy()
+   {
+      super(CacheType.Shared);
+   }
+
    @Override
    public boolean isResponseCacheable(HttpRequest request, ClientHttpResponse response)
+      throws IOException
    {
       HttpHeaders reqHeaders = request.getHeaders();
       HttpHeaders respHeaders = response.getHeaders();

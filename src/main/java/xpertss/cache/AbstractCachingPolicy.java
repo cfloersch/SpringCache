@@ -10,6 +10,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
+import xpertss.lang.Objects;
+import xpertss.lang.Strings;
 import xpertss.util.Sets;
 
 import java.io.IOException;
@@ -27,8 +29,17 @@ public abstract class AbstractCachingPolicy implements CachingPolicy {
 
    private static final Set<HttpMethod> CACHEABLE_METHODS = EnumSet.of(HttpMethod.GET);
 
+   private final CacheType type;
+
+   protected AbstractCachingPolicy(CacheType type)
+   {
+      this.type = Objects.notNull(type, "type");
+   }
+
+
    @Override
    public boolean isServableFromCache(HttpRequest request)
+      throws IOException
    {
       if(!isCacheableMethod(request.getMethod())) return false;
 
@@ -41,29 +52,21 @@ public abstract class AbstractCachingPolicy implements CachingPolicy {
 
 
    protected boolean isResponseCacheable(ClientHttpResponse response)
+      throws IOException
    {
 
       boolean cacheable = false;
       HttpHeaders headers = response.getHeaders();
 
-      try {
-         int status = response.getRawStatusCode();
-         if(isImplicitlyCacheableStatus(status)) {
-            cacheable = true;  //MAY be cached
-         } else if(isUncacheableStatus(status)) {
-            return false;
-         }
-      } catch(IOException ex) {
-         // TODO Should I be tunneling this or just make the cache define IOException??
-         throw new IllegalStateException(ex);
+      int status = response.getRawStatusCode();
+      if(isImplicitlyCacheableStatus(status)) {
+         cacheable = true;  //MAY be cached
+      } else if(isUncacheableStatus(status)) {
+         return false;
       }
 
       CacheControl cc = CacheControl.valueOf(headers);
       if(isExplicitlyNonCacheable(cc)) {
-         return false;
-      }
-
-      if(headers.getContentLength() < 0) {
          return false;
       }
 
@@ -76,10 +79,30 @@ public abstract class AbstractCachingPolicy implements CachingPolicy {
          return false;
       }
 
+      if(!isVerifiable(headers)) {
+         // Uncacheable if no verifiers present and cache is already stale
+         if(cc.getMaxAge(type) < 0) return false;
+      }
+
+
+      // TODO Do we want to do this?? It is primarily because our cache limit is based on size
+      // and we would not know the size until we had downloaded the content which is async to
+      // the cache record creation which needs to know this
+      if(headers.getContentLength() < 0) {
+         return false;
+      }
+
+
 
       return cacheable;
    }
 
+
+   protected boolean isVerifiable(HttpHeaders headers)
+   {
+      return headers.getLastModified() >= 0
+               || !Strings.isEmpty(headers.getETag());
+   }
 
    protected boolean isCacheableMethod(HttpMethod method)
    {

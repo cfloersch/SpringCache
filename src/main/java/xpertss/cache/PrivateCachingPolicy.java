@@ -10,6 +10,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 
+import java.io.IOException;
+
 
 /**
  * A private caching policy will allow items marked as private to be cached and
@@ -18,8 +20,14 @@ import org.springframework.http.client.ClientHttpResponse;
  */
 public class PrivateCachingPolicy extends AbstractCachingPolicy {
 
+   public PrivateCachingPolicy()
+   {
+      super(CacheType.Private);
+   }
+
    @Override
    public boolean isResponseCacheable(HttpRequest request, ClientHttpResponse response)
+      throws IOException
    {
       HttpHeaders reqHeaders = request.getHeaders();
 

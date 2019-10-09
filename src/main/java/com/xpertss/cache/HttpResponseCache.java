@@ -10,13 +10,12 @@ import com.xpertss.cache.store.CacheItem;
 import com.xpertss.cache.store.CacheStore;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpResponse;
 import xpertss.cache.CacheControl;
-import xpertss.cache.CacheResponse;
 import xpertss.cache.CacheType;
 import xpertss.cache.CachingPolicy;
 import xpertss.cache.ResponseCache;
-import xpertss.lang.Integers;
 import xpertss.lang.Objects;
 
 import java.io.IOException;
@@ -40,11 +39,18 @@ public class HttpResponseCache implements ResponseCache {
 
 
    @Override
-   public CacheResponse get(HttpRequest request) throws IOException
+   public ClientHttpResponse get(HttpRequest request) throws IOException
    {
       if(policy.isServableFromCache(request)) {
          CacheItem[] items = store.get(createId(request));
+         if(!Objects.isEmpty(items)) {
+            /* TODO
+             * Either mutate the request headers to add If-None-Match or If-Modified-Since
+             *   or return a CachedHttpResponse
+             *   or return null
+             */
 
+         }
       }
       return null;
    }
@@ -54,26 +60,31 @@ public class HttpResponseCache implements ResponseCache {
       throws IOException
    {
       if(policy.isResponseCacheable(request, response)) {
-         String key = createId(request);
-         CacheItem item = createCacheItem(response);
-         long size = response.getHeaders().getContentLength();
-         OutputStream out = store.cache(key, item, size);
-         return new CachingHttpResponse(response, out);
+         CacheItem[] items = store.get(createId(request));
+         if(!Objects.isEmpty(items)) {
+            if(response.getStatusCode() == HttpStatus.NOT_MODIFIED) {
+               if(items.length == 1) {
+                  return new CachedHttpResponse(items[0]);
+               } else {
+
+               }
+            }
+         }
+         // TODO If response is 304 then we need to locate and return the correct cache (update access info)
+         //    return CachedHttpResponse
+         // TODO If request had If-Modified-Since we will need to replace the existing cache
+         //    return CachingHttpResponse
+         // TODO If request has If-None-Match then we need to add the new cache item
+         //    return CachingHttpResponse
+         // TODO Otherwise, we need to cache
+         //    return CachingHttpResponse
       }
       return response;
    }
 
 
    
-   public void start()
-   {
 
-   }
-
-   public void stop()
-   {
-
-   }
 
 
    private String createId(HttpRequest request)
@@ -90,32 +101,14 @@ public class HttpResponseCache implements ResponseCache {
 
       item = item.withETag(headers.getETag())
                .withLastModified(new Date(headers.getLastModified()))
-               .withMaxAge(getMaxAge(headers, cc.getMaxAge(type)))
-               .withConditional(cc.getRevalidate(type));
+               .withMaxAge(cc.getMaxAge(type))
+               .withConditional(cc.getMustRevalidate(type));
       
       return item;
    }
 
 
 
-   private int getMaxAge(HttpHeaders headers, int maxAge)
-   {
-      if(maxAge < 0) {
-         long expires = headers.getExpires();
-         if(expires < 0) {
-            maxAge = 0;
-         } else {
-            long date = headers.getDate();
-            long diff = expires - date;
-            if(diff < 0) {
-               maxAge = 0;
-            } else {
-               maxAge = Integers.safeCast(diff / 1000);
-            }
-         }
-      }
-      return maxAge;
-   }
 
 }
 

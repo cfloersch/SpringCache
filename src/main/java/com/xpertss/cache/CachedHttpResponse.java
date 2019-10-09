@@ -6,6 +6,7 @@
  */
 package com.xpertss.cache;
 
+import com.xpertss.cache.store.CacheItem;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpResponse;
@@ -13,19 +14,14 @@ import xpertss.lang.Objects;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.MappedByteBuffer;
 
 public class CachedHttpResponse implements ClientHttpResponse {
 
-   private HttpStatus status;
-   private HttpHeaders headers;
-   private MappedByteBuffer data;
+   private final CacheItem cachedItem;
 
-   public CachedHttpResponse(HttpStatus status, HttpHeaders headers, MappedByteBuffer data)
+   public CachedHttpResponse(CacheItem cachedItem)
    {
-      this.status = Objects.notNull(status, "status");
-      this.headers = Objects.notNull(headers, "headers");
-      this.data = Objects.notNull(data, "data");
+      this.cachedItem = Objects.notNull(cachedItem, "cachedItem");
    }
 
 
@@ -33,40 +29,40 @@ public class CachedHttpResponse implements ClientHttpResponse {
    public HttpStatus getStatusCode()
       throws IOException
    {
-      return status;
+      return cachedItem.getStatus();
    }
 
    @Override
    public int getRawStatusCode()
       throws IOException
    {
-      return status.value();
+      return getStatusCode().value();
    }
 
    @Override
    public String getStatusText()
       throws IOException
    {
-      return status.getReasonPhrase();
+      return getStatusCode().getReasonPhrase();
    }
 
    @Override
    public void close()
    {
-      data.force();
+      // TODO Anything I need to do here
    }
 
    @Override
    public InputStream getBody()
       throws IOException
    {
-      return null;
+      return cachedItem.newInput();
    }
 
    @Override
    public HttpHeaders getHeaders()
    {
-      return headers;
+      return cachedItem.getHeaders();
    }
 
 }

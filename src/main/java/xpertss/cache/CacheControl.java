@@ -3,9 +3,12 @@ package xpertss.cache;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.util.Assert;
+import xpertss.lang.Integers;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static xpertss.cache.CacheType.Shared;
 
 /**
  * Represents a HTTP Cache-Control response header and parses it from string.
@@ -14,6 +17,8 @@ import java.util.regex.Pattern;
  * <tt>no-cache</tt> directive and cache extensions.
  *
  * @see <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.9">HTTP/1.1 section 14.9</a>
+ *
+ * TODO Add stale-on-error/etc
  */
 public class CacheControl {
 
@@ -60,6 +65,7 @@ public class CacheControl {
     */
    private boolean isNoStore = false;
 
+
    /**
     * Whether the <tt>no-transform</tt> directive is specified.
     * The default value is <tt>false</tt>.
@@ -93,15 +99,63 @@ public class CacheControl {
    private boolean isProxyRevalidate = false;
 
 
+
+   /**
+    * Whether the <tt>immutable</tt> directive is specified.
+    * The default value is <tt>false</tt>.
+    *
+    * @see <a href="https://tools.ietf.org/html/rfc8246">HTTP Immutable Responses</a>
+    */
+   private boolean isImmutable = false;
+
+   /**
+    * Whether the <tt>stale-if-error</tt> directive is specified.
+    * The default value is <tt>false</tt>.
+    *
+    * @see <a href="https://tools.ietf.org/html/rfc5861#section-4">HTTP Cache-Control Extensions for Stale Content</a>
+    */
+   private boolean isStaleIfError = false;
+
+   /**
+    * Whether the <tt>stale-while-revalidate</tt> directive is specified.
+    * The default value is <tt>false</tt>.
+    *
+    * @see <a href="https://tools.ietf.org/html/rfc5861#section-3">HTTP Cache-Control Extensions for Stale Content</a>
+    */
+   private boolean isStaleWhileRevalidate = false;
+
+   
+   /**
+    * Creates a new instance of CacheControl by parsing the Cache-Control
+    * header. Additionally, if max-age or s-max-age are not specified in
+    * the Cache-Control header the Expires header will be parsed instead.
+    *
+    * @param headers the request/response headers to pull from
+    */
    public static CacheControl valueOf(HttpHeaders headers)
    {
-      return valueOf(headers.getCacheControl());
+      CacheControl cc = valueOf(headers.getCacheControl());
+      if(cc.getMaxAge(Shared) < 0) {
+         long expires = headers.getExpires();
+         if(expires < 0) {
+            cc.setMaxAge(0);
+         } else {
+            long date = headers.getDate();
+            long diff = expires - date;
+            if(diff < 0) {
+               cc.setMaxAge(0);
+            } else {
+               cc.setMaxAge(Integers.safeCast(diff / 1000));
+            }
+         }
+      }
+      return cc;
    }
 
    /**
     * Creates a new instance of CacheControl by parsing the supplied string.
     *
-    * @param value A value the Cache-Control header.
+    * @param value the Cache-Control header value as a string.
     */
    public static CacheControl valueOf(String value)
    {
@@ -137,6 +191,15 @@ public class CacheControl {
                   break;
                case "proxy-revalidate":
                   cc.setProxyRevalidate(true);
+                  break;
+               case "immutable":
+                  cc.setImmutable(true);
+                  break;
+               case "stale-while-revalidate":
+                  cc.setStaleWhileRevalidate(true);
+                  break;
+               case "stale-if-error":
+                  cc.setStaleIfError(true);
                   break;
                default: //ignore
             }
@@ -243,6 +306,41 @@ public class CacheControl {
       isProxyRevalidate = proxyRevalidate;
    }
 
+
+   public boolean isImmutable()
+   {
+      return isImmutable;
+   }
+
+   public void setImmutable(boolean value)
+   {
+      isImmutable = value;
+   }
+
+
+   public boolean isStaleIfError()
+   {
+      return isStaleIfError;
+   }
+
+   public void setStaleIfError(boolean value)
+   {
+      isStaleIfError = value;
+   }
+
+
+   public boolean isStaleWhileRevalidate()
+   {
+      return isStaleWhileRevalidate;
+   }
+
+   public void setStaleWhileRevalidate(boolean value)
+   {
+      isStaleWhileRevalidate = value;
+   }
+
+
+
    /**
     * Returns <tt>max-age</tt>, or <tt>s-maxage</tt> according to whether the
     * cache is a shared cache, or a private cache. If shared cache and the
@@ -255,20 +353,27 @@ public class CacheControl {
     */
    public int getMaxAge(CacheType type)
    {
-      if(type == CacheType.Shared) {
-         return sMaxAge >= 0 ? sMaxAge : maxAge;
-      } else {
-         return maxAge;
-      }
+      if(isNoCache) return 0;
+      return (type == Shared && sMaxAge >= 0) ? sMaxAge : maxAge;
    }
 
-   public boolean getRevalidate(CacheType type)
+   public boolean getMustRevalidate(CacheType type)
    {
-      if(type == CacheType.Shared) {
+      if(isNoCache) return true;
+      if(type == Shared) {
          return isProxyRevalidate || isMustRevalidate;
-      } else {
-         return isMustRevalidate;
       }
+      return isMustRevalidate;
+   }
+
+   public Visibility getVisibility()
+   {
+      if(isPublic) {
+         return Visibility.Public;
+      } else if(isPrivate) {
+         return Visibility.Private;
+      }
+      return Visibility.Unknown;
    }
 
 }

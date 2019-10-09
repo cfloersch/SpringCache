@@ -9,6 +9,7 @@ package xpertss.cache;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 
+import java.io.IOException;
 import java.util.Date;
 
 /**
@@ -25,7 +26,8 @@ public interface CachingPolicy {
     * @param response The response from the origin.
     * @return <tt>true</tt> if response is cacheable.
     */
-   boolean isResponseCacheable(HttpRequest request, ClientHttpResponse response);
+   boolean isResponseCacheable(HttpRequest request, ClientHttpResponse response)
+      throws IOException;
 
    /**
     * Determines if the given {@code HttpRequest} is allowed to be served
@@ -34,7 +36,8 @@ public interface CachingPolicy {
     * @param request The request to check.
     * @return <tt>true</tt> if request can be served from cache.
     */
-   boolean isServableFromCache(HttpRequest request);
+   boolean isServableFromCache(HttpRequest request)
+      throws IOException;
 
 
 }

@@ -1,16 +1,118 @@
-Totally redo this design
+Notes
+   If we have Cache-Control with both a no-cache and a max-age, we will use no-cache and
+   ignore max-age. Thus max-age = 0
 
-Need to store in a database
-   url, parameters, etag, last mod date, cache date, and expiration date
-   Probably also need to store the other Cache-Control values like must-revalidate
+   If both Cache-Control: max-age=X and Expires are defined we will use the max-age and ignore
+   Expires.
 
-What should I use for expiration date if not max-age is specified? The best answer
-is probably always using max-age = 0 unless specified explicitly. In that case the
-cache is instantly stale (I could serve it up immediately unless must-revaldiate
-is present at which point it must be a conditional cache check)
+   When ETag and Last-Modified headers are present we will use ETag as the validator.
 
-Per my previous research into caching/conditional execution I intend to use ETag
-for caching and ignore If-Modified-Since
+   We will need to have a rule which makes any entity that does NOT include either a Last-Modified
+   or an ETag uncachable unless there is a max-age (expires). Since no validation can occur we will
+   evict that item immediately once max-age is reached. (no-cache for example could not be cached)
+
+   If Cache-Control: max-age=X is not included but an Expires headers is present we will compute
+   the max-age based on Expires - Date.
+
+   If no-cache is specified or max-age cannot be computed we will treat the cache item as stale
+   immediately. Any subsequent query would have to be conditional. If this is the case and I do
+   not have a Last-Modified nor ETag header then it is uncachable.
+
+
+
+
+Cache Versions
+  When I have an entity that defines a Last-Modified but does not define an ETag I will only ever
+  have a single cache item for that key. When I execute a conditional If-Modified-Since validation
+  check and I get back 200 OK instead of 304 Not Modified I will replace the existing cache item.
+
+  If I have an entity that has both an ETag and a Last-Modified I will always use the ETag.
+
+  When using ETag the secondary discriminator will be the public, private, unknown status. We can
+  only ever have one PUBLIC variant. All subsequent revalidations should overwrite any previous
+  public entity. We can keep N number of unknown and private cache items. However, we should
+  never serve stale-on-error if the item is private.
+
+  A given cache key may contain multiple CacheItems if (and only if) we are using ETag. In this
+  case it is acceptable to have one and only one PUBLIC item. Any conditional updates that are
+  received as PUBLIC should overwrite any previous PUBLIC entity.
+
+  We can hold multiple unknown or private items. However, we should ignore any max-age on these
+  items? This would result in them always being revalidated?
+
+
+
+
+Actual Cache
+   Ideally the actual cache would be a ConcurrentMultiMap or some sort. The key would be the URL
+   of the cache item. The value would be a set of one or more CacheItem instances. The CacheItem
+   instances would be unique based on their ETag. If there is no ETag then there could be only
+   one item. If I add CacheItem with no ETag all existing items are evicted. If I add an item
+   with an ETag and there is an existing item with no ETag it is evicted. If I add an item with
+   an ETag any existing item with the same ETag is evicted.
+
+   The CacheItem stores all of the data such as ETag, LastModified, Expires, Created, Public,
+   Private, or Unknown and whether the entity requires re-validation. (What to do if max-age and
+   must-revalidate are both present?) We should also store the headers?
+
+   The cache should apply a weight to each cache item that should be the size of the cached
+   entity. The cache should keep track of the total accumulated weight and begin evictions
+   when we exceed a defined maximum.
+
+   When we evict cache items we will evict the least recently used items first until we free
+   up sufficient weight to allow the newly added item to be added. As we evict each item we
+   delete its underlying cache file.
+
+   Items are not added to the cache until the underlying cache file has been populated. This
+   will be the last step of a CachingHttpResponse when the body has been read successfully.
+
+
+
+
+Concurrency
+   What sort of attempt should I make at managing concurrency. For example if two threads
+   both request /someresource at the same time both will find that it is not cached. They
+   will both proceed to download the resource from the origin at which point they will
+   both attempt to persist the result in the cache. Presumably in most cases the entity
+   will be the same. So the one that gets added last will remove all of the items added
+   before it (as presumably they have the same ETag).
+
+   This is not ideal but there is nothing wrong with it either. This race to fill the
+   cache is known as the stampede. If we somehow locked on the URI would could prevent
+   this but to what end and with how much complexity?
+
+
+
+Additional & Extension Directives
+
+   immutable               (probably not)
+      No conditional revalidation will be triggered even if the user explicitly refreshes
+      a page. The immutable directive tells the client that the response body will not
+      change over time, therefore, there is no need to check for updates as long as it
+      is unexpired. Entities with this headers should ALWAYS be served from cache with
+      out ever going to the origin server.
+
+   stale-while-revalidate  (probably not)
+      The stale-while-revalidate directive allows for a stale asset to be served while it
+      is revalidated in the background.
+
+   stale-if-error          (probably so)
+      The stale-if-error directive is very similar to the stale-while-revalidate
+      directive in that it serves stale content when the max-age expires. However, the
+      stale-if-error only returns stale content if the origin server returns an error
+      code (e.g. 500, 502, 503, or 504) when the cache attempts to revalidate the asset.
+
+      We should never return a stale-if-error cache item if it is also marked private.
+
+   no-transform            (probably not)
+      The no-transform directive tells any intermediary such as a proxy or cache server
+      to not make any modifications whatsoever to the original asset. The Content-Encoding,
+      Content-Range, and Content-Type headers must remain unchanged. This can occur if a
+      non-transparent proxy decides to make modifications to assets in order to save space.
+      However, this can cause serious problems in the event that the asset must remain
+      identical to the original entity-body although must also pass through the proxy.
+
+
 
 
 Cache
@@ -102,13 +204,7 @@ Underlying cache itself
 
 
 
-Notes: When Cache-Control header is present with an Expires header the cache-control header is
-the only one parsed. Expires is only used when no Cache-Control header is present.
+    
 
-When ETag is present it is used as the validator. If it is not present but Last-Modified is
-present then that should be used as the validator. If neither are present then revalidation is
-impossible and any response that dictates revalidation cannot be cached. For example
 
-Cache-Control: no-cache
 
-The above MUST be present with either a Last-Modified or ETag or it cannot be cached.

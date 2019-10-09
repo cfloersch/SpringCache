@@ -6,6 +6,9 @@
  */
 package com.xpertss.cache;
 
+import com.xpertss.cache.store.CacheItem;
+import com.xpertss.cache.store.CacheStore;
+import com.xpertss.cache.store.io.TeeInputStream;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpResponse;
@@ -13,22 +16,31 @@ import xpertss.lang.Objects;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 
 /**
  * This class proxies a ClientHttpResponse and wraps the InputStream
- * so that the entity is written to the cache as it is read from the
- * network.
+ * so that the entity is written to the cache file as it is read from
+ * the network. Finally, once the complete entity has been written to
+ * disk the CacheItem is actually stored in the cache.
  */
 public class CachingHttpResponse implements ClientHttpResponse {
 
-   private final ClientHttpResponse proxied;
-   private final OutputStream cache;
+   /*
+      TODO I need to modify this so that the CacheItem is added to the cache only after
+      it has been fully processed (and thus the file cache is complete). This will allow
+      me to know the size of the item even when there is no Content-Length header and it
+      will prevent corrupt cache data because the entity body was not fully downloaded.
+    */
 
-   public CachingHttpResponse(ClientHttpResponse proxied, OutputStream cache)
+   private final ClientHttpResponse proxied;
+   private final CacheStore cache;
+   private final CacheItem item;
+
+   public CachingHttpResponse(ClientHttpResponse proxied, CacheStore cache, CacheItem item)
    {
       this.proxied = Objects.notNull(proxied, "proxied");
       this.cache = Objects.notNull(cache, "cache");
+      this.item = Objects.notNull(item, "item");
    }
 
 
@@ -63,22 +75,20 @@ public class CachingHttpResponse implements ClientHttpResponse {
 
 
 
-   // TODO Need to create InputStream that wraps the proxied input stream and
-   // writes everything to outputstream as bytes are read in.
 
    @Override
    public InputStream getBody()
       throws IOException
    {
-      return null;
+      TeeInputStream input = new TeeInputStream(proxied.getBody(), item.newOutput());
+      // need to detect EOF and add cache item to the cache store (for just the first occurrence)
+      return input;
    }
 
-   // TODO Do I need to close the proxied inputstream and thus the underlying
-   //  inputstream and cache outputstream.
    @Override
    public void close()
    {
-
+      proxied.close();
    }
 
 }

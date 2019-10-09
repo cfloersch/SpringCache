@@ -22,23 +22,38 @@ import java.io.IOException;
 public interface ResponseCache {
 
    /**
-    * Get a previously cached response if one exists. The returned cache response
-    * will be {@code null} if the request's response has not previously been cached.
-    * Otherwise, it will return a {@link CacheResponse} providing access to the cached
-    * response as well as some meta-data indicating whether the cached response can
-    * be accessed directly or only as part of a validation call.
+    * Get a previously cached response if one exists. The returned cache response will be
+    * {@code null} if the request's response has not previously been cached or if it must
+    * be verified. Otherwise, it will return a {@link ClientHttpResponse} representing the
+    * cached response.
+    * <p/>
+    * The HttpRequest's headers may be modified by this call to force a conditional cache
+    * verification by the server.
     *
     * @param request the http request to get a cache response for
     * @return a previously cached cache response or {@code null}
     * @throws IOException if an error occurs trying to fetch the cache
     */
-   public CacheResponse get(HttpRequest request) throws IOException;
+   public ClientHttpResponse get(HttpRequest request) throws IOException;
 
    /**
-    * This method will evaluate the request and response and determine if the response
-    * is cachable. It will return a ClientHttpResponse in either case, however, if the
-    * response is not cachable the returned object will be the same as the supplied
-    * argument.
+    * This method will evaluate the request and response and return an appropriate client
+    * response.
+    * <p/>
+    * If the response headers indicate that a previously cached copy is still VALID the
+    * cache status will be updated and a previously cached client response will be
+    * returned.
+    * <p/>
+    * If the response indicates that a previously cached response is no longer valid
+    * then a CachingClientResponse will be returned that will update the cache with the
+    * new content as it is downloaded from the network.
+    * <p/>
+    * If no previously existing cached response exists and the response is cachable
+    * then a CachingClientResponse will be returned which will write the data to the
+    * disk cache as it is downloaded from the network.
+    * <p/>
+    * If no previously existing cached response exists and the response is not cachable
+    * then the returned object will the same as the supplied argument.
     *
     * @param request the request to cache the response for
     * @param response the response to cache if cachable

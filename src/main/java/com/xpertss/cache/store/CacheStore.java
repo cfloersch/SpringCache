@@ -11,12 +11,8 @@ import xpertss.lang.Objects;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.UUID;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
@@ -46,37 +42,60 @@ public class CacheStore {
    }
 
 
+
+
+
+
+
+
+
    public CacheItem[] get(String key) throws IOException
    {
       return null;
    }
 
-   public OutputStream cache(String key, CacheItem item, long size) throws IOException
+   // Add Multimap item
+   public void put(String key, CacheItem item) throws IOException
    {
-      Path fileName = path.resolve(Objects.toString(UUID.randomUUID()));
+      // TODO Must be smart enough to add items only if they are not public
+      // may require items to be evicted to make room
+   }
 
-      // TODO store meta data, in database, create temp file (memory mapped??) for response
-      // Store headers where???
-
-      // TODO Maybe I need to open a memory mapped buffer, add it to the cache item, then
-      // ensure the returned output stream can write to it.
-
-      FileChannel cacheFile = FileChannel.open(fileName, CREATE_NEW, WRITE, READ, DELETE_ON_CLOSE);
-      ByteBuffer entity = cacheFile.map(FileChannel.MapMode.READ_WRITE, 0, size);
-
-      // TODO Need to wrap the buffer with an OutputStream???
-
-      return Files.newOutputStream(fileName, CREATE_NEW, WRITE);
+   // Clear any items in the multimap and add item
+   public void replace(String key, CacheItem item) throws IOException
+   {
+      // may require items to be evicted to make room
    }
 
 
-   public void start()
+
+
+   // Remove and passivate all cache items associated with the given key
+   public void evict(String key)
    {
-      Path dbPath = path.resolve("db");
-      if(!Files.exists(dbPath)) {
-         // create database
-      }
    }
+
+   public void clear()
+   {
+      // evict all
+   }
+
+   public void clean()
+   {
+      // perform whatever background tasks need to be performed. (if any)
+   }
+
+
+   public int size()
+   {
+      return 0; // number of keys, items, or total disk space?
+   }
+
+
+
+
+
+
 
 
 }
