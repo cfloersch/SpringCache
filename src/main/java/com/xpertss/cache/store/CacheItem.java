@@ -9,24 +9,24 @@ package com.xpertss.cache.store;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import xpertss.cache.Visibility;
-import xpertss.time.Dates;
+import xpertss.lang.Integers;
+import xpertss.lang.Numbers;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Date;
 
 import static java.nio.file.StandardOpenOption.*;
 
 public class CacheItem {
 
-   private Date cached = new Date();
-   private Date expires;
+   private long cached = System.currentTimeMillis();
+   private int maxAge = -1;
 
    private String eTag;
-   private Date lastModifiedDate;
+   private long lastModified;
 
    private boolean conditional;
    private boolean staleOnError;
@@ -43,15 +43,15 @@ public class CacheItem {
    {
    }
 
-   public Date getCached()
+   public long getCached()
    {
       return cached;
    }
 
-   public CacheItem withCached(Date cached)
+   public CacheItem withCached(long cached)
    {
       CacheItem copy = copy();
-      copy.cached = Dates.gte(cached, new Date(), "cached");
+      copy.cached = Numbers.gt(0L, cached, "cached");
       return copy;
    }
 
@@ -60,44 +60,42 @@ public class CacheItem {
 
    public boolean isExpired()
    {
-      return expires.after(new Date());
+      return System.currentTimeMillis() > getExpires();
    }
 
-   public Date getExpires()
+   public long getExpires()
    {
-      return expires;
+      return cached + (maxAge * 1000);
    }
 
-   public CacheItem withExpires(Date expires)
-   {
-      CacheItem copy = copy();
-      copy.expires = Dates.gte(expires, new Date(), "expires");
-      return copy;
-   }
 
    public CacheItem withMaxAge(int maxAge)
    {
       CacheItem copy = copy();
-      copy.expires = new Date(cached.getTime() + (maxAge * 1000L));
+      copy.maxAge = Numbers.gte(0, maxAge, "maxAge");
       return copy;
    }
 
-
-
-
-
-
-
-
-   public Date getLastModifiedDate()
+   public int getAge()
    {
-      return lastModifiedDate;
+      return Integers.safeCast((System.currentTimeMillis() - cached) / 1000);
    }
 
-   public CacheItem withLastModified(Date lastModified)
+
+
+
+
+
+
+   public long getLastModified()
+   {
+      return lastModified;
+   }
+
+   public CacheItem withLastModified(long lastModified)
    {
       CacheItem copy = copy();
-      copy.lastModifiedDate = lastModified;
+      copy.lastModified = lastModified;
       return copy;
    }
 
@@ -173,6 +171,7 @@ public class CacheItem {
    {
       HttpHeaders result = new HttpHeaders();
       result.addAll(headers);
+      result.set("Age", Integer.toString(getAge()));
       return result;
    }
 
@@ -230,9 +229,9 @@ public class CacheItem {
    {
       CacheItem copy = new CacheItem();
       copy.cached = cached;
-      copy.expires = expires;
+      copy.maxAge = maxAge;
       copy.eTag = eTag;
-      copy.lastModifiedDate = lastModifiedDate;
+      copy.lastModified = lastModified;
       copy.conditional = conditional;
       copy.staleOnError = staleOnError;
       copy.visibility = visibility;

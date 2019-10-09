@@ -18,10 +18,12 @@ import java.io.InputStream;
 public class CachedHttpResponse implements ClientHttpResponse {
 
    private final CacheItem cachedItem;
+   private final HttpHeaders headers;
 
    public CachedHttpResponse(CacheItem cachedItem)
    {
       this.cachedItem = Objects.notNull(cachedItem, "cachedItem");
+      this.headers = cachedItem.getHeaders();
    }
 
 
@@ -62,7 +64,7 @@ public class CachedHttpResponse implements ClientHttpResponse {
    @Override
    public HttpHeaders getHeaders()
    {
-      return cachedItem.getHeaders();
+      return headers;
    }
 
 }

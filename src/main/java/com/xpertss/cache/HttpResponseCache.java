@@ -70,7 +70,9 @@ public class HttpResponseCache implements ResponseCache {
                }
             }
          }
-         // TODO If response is 304 then we need to locate and return the correct cache (update access info)
+         // TODO If response is 304 then we need to locate and return the correct cache
+         //       update access info
+         //       update cache time
          //    return CachedHttpResponse
          // TODO If request had If-Modified-Since we will need to replace the existing cache
          //    return CachingHttpResponse
