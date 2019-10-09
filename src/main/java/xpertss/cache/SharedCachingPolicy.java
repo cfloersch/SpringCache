@@ -29,6 +29,7 @@ public class SharedCachingPolicy extends AbstractCachingPolicy {
 
       CacheControl reqCc = CacheControl.valueOf(reqHeaders.getCacheControl());
       if(reqCc.isNoStore()) return false;
+      if(reqCc.isPrivate()) return false;
 
       if(reqHeaders.getFirst("Authorization") != null) {
          CacheControl respCc = CacheControl.valueOf(respHeaders);
