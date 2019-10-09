@@ -1,0 +1,114 @@
+Totally redo this design
+
+Need to store in a database
+   url, parameters, etag, last mod date, cache date, and expiration date
+   Probably also need to store the other Cache-Control values like must-revalidate
+
+What should I use for expiration date if not max-age is specified? The best answer
+is probably always using max-age = 0 unless specified explicitly. In that case the
+cache is instantly stale (I could serve it up immediately unless must-revaldiate
+is present at which point it must be a conditional cache check)
+
+Per my previous research into caching/conditional execution I intend to use ETag
+for caching and ignore If-Modified-Since
+
+
+Cache
+   Cache-Control: private
+      Means only private caches may cache this data
+   Cache-Control: public
+      Means any cache (including shared caches) may cache this data
+   Cache-Control: must-revalidate
+      Means the caching server must revalidate once its cache has become stale
+
+   The current Spring system does not include any sort of cache control headers (other than ETag)
+   and the Last-Modified header I am adding for entities.
+
+   Expires and Pragma are really legacy headers useful mostly for preventing caching.
+
+   https://tools.ietf.org/html/rfc7234
+   https://www.keycdn.com/blog/http-cache-headers
+
+
+
+
+Http Preconditions
+   For those headers which support * it owuld appear it is a list of quoted etags separated by comma OR a
+   * but not both.
+
+       If-Match: "xyzzy"
+       If-Match: "xyzzy", "r2d2xxxx", "c3piozzzz"
+       If-Match: *
+
+   Cache Control (GET/HEAD)
+      If-None-Match
+         Supports list or wildcard
+         Takes precedence over If-Modified-Since
+         Used primarily for cache control to have content returned if it has been changed since any of the etags were obtained
+         Response should include the etag of the entity that matched
+         https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.26
+      If-Modified-Since
+         Supports single date..
+         Used primarily for cache control to have content returned if it has been changed since the specified date
+         https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.25
+
+
+
+
+Java 5 Introduced a Basic Caching API
+
+   The core of this API focused around a cache controller caller ResponseCache
+      https://docs.oracle.com/javase/9/docs/api/java/net/ResponseCache.html
+
+   An attempt to pull from cache would return a CacheResponse if the item existed in Cache and the
+   request headers allowed retrieving from cache. Otherwise, it would return null. In order to
+   impl conditional caching I need to have a subtype which makes it clear it is to be used only
+   on a 304 - Not Modified response
+      https://docs.oracle.com/javase/9/docs/api/java/net/CacheResponse.html
+
+   An attempt to store something into cache would return a CacheRequest which acted liked a proxy to
+   the actual request.
+      https://docs.oracle.com/javase/9/docs/api/java/net/CacheRequest.html
+
+
+
+
+Underlying cache itself
+   I would like to have a memory cache with a disk backing store. In this model if our total memory
+   usage exceeds a certain threshold or the cached item exceeds a certain age it will be passivated
+   to disk only. I would also like to have a configurable setting that allows the user to define the
+   max cache size which would look at each cache item and cache only to disk items that exceed that
+   size.
+
+   The cache will need to have a thread that periodically goes through and cleans up the cache
+   evicting items that have exceeded their expiration (based on the must-revalidate rules). I would
+   love to implement the stale-on-error and Stale-While-Revalidate headers as well if I have time.
+
+   max-expires is a configurable setting that defines how long an item can be served from the
+   cache without checking if max-age and must-revaliate are not specified.
+
+   The user can configure the cache as private or public. If marked as public it will cache in a
+   fashion similar to a proxy cache otherwise it will cache like a user-agent.
+
+   Probably need to have a method to configure max-stale, max-age (when undefined), etc. Also
+   probably need to have a max-total-size where the cache (disk consumption) does not exceed this
+   value and where Least Recently Used cache items are evicted.
+
+   The entities themselves are written to disk. The headers are written to?? The rest of the meta
+   data is stored in a database so that I can fetch ordered by oldest, least recently used, url,
+   etc. The ability to mark the item with cache date, expire date, and last access date would be
+   important as would the need to mark it as must-revalidate, no-transform?
+
+
+
+
+Notes: When Cache-Control header is present with an Expires header the cache-control header is
+the only one parsed. Expires is only used when no Cache-Control header is present.
+
+When ETag is present it is used as the validator. If it is not present but Last-Modified is
+present then that should be used as the validator. If neither are present then revalidation is
+impossible and any response that dictates revalidation cannot be cached. For example
+
+Cache-Control: no-cache
+
+The above MUST be present with either a Last-Modified or ETag or it cannot be cached.
