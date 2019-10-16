@@ -45,7 +45,9 @@ public abstract class AbstractCachingPolicy implements CachingPolicy {
 
       CacheControl cc = CacheControl.valueOf(request.getHeaders().getCacheControl());
       if(cc.isNoStore()) return false;
-      if(cc.isNoCache()) return false;
+      if(cc.isNoCache()) return false; // technically can be served from cache (if revalidated)
+
+      // TODO Add check for Pragm: no-cache
 
       return true;
    }

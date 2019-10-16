@@ -18,7 +18,60 @@ Notes
    immediately. Any subsequent query would have to be conditional. If this is the case and I do
    not have a Last-Modified nor ETag header then it is uncachable.
 
+   If max-age is greater than Integer.MAX_VALUE then it should be treated as Integer.MAX_VALUE
 
+   Note that cached responses that contain the "must-revalidate" and/or "s-maxage" response
+   directives are not allowed to be served stale by shared caches.  In particular, a response
+   with either "max-age=0, must-revalidate" or "s-maxage=0" cannot be used to satisfy a
+   subsequent request without revalidating it on the origin server.
+
+   Do not server content if the request contains Pragma: no-cache header.
+
+   Age header is added to the Response headers ONLY when served from cache without revalidation.
+
+   Clients can send the max-age or min-fresh cache directives in a request to constrain or
+   relax freshness calculations for the corresponding response.
+
+    However, if a cache receives a 5xx (Server Error) response while attempting to validate
+    a response, it can either forward this response to the requesting client, or act as if
+    the server failed to respond.  In the latter case, the cache MAY send a previously stored
+    response.
+
+    There are a bunch of warning headers that might need to be applied:
+    https://tools.ietf.org/html/rfc7234#section-5.5
+    
+
+Request Cache Control Directives
+
+  max-age
+    The "max-age" request directive indicates that the client is unwilling to accept a
+    response whose age is greater than the specified number of seconds.  Unless the
+    max-stale request directive is also present, the client is not willing to accept
+    a stale response.
+
+  max-stale
+    The "max-stale" request directive indicates that the client is willing to accept
+    a response that has exceeded its freshness lifetime.  If max-stale is assigned a
+    value, then the client is willing to accept a response that has exceeded its
+    freshness lifetime by no more than the specified number of seconds.  If no
+    value is assigned to max-stale, then the client is willing to accept a stale
+    response of any age.
+
+  min-fresh
+    The "min-fresh" request directive indicates that the client is willing to accept
+    a response whose freshness lifetime is no less than its current age plus the
+    specified time in seconds.  That is, the client wants a response that will still
+    be fresh for at least the specified number of seconds.
+
+  no-cache
+    The "no-cache" request directive indicates that a cache MUST NOT use a stored
+    response to satisfy the request without successful validation on the origin server.
+
+  no-store
+    The "no-store" request directive indicates that a cache MUST NOT store any part
+    of either this request or any response to it.  This directive applies to both
+    private and shared caches.
+    
 
 
 Cache Versions

@@ -114,6 +114,12 @@ public class CacheItem implements Weighable {
       return Integers.safeCast((System.currentTimeMillis() - cached) / 1000);
    }
 
+   public int getStale()
+   {
+      return 0;   // TODO 0 for anything that is not stale, otherwise, its the number of seconds stale the item is (for max-stale)
+   }
+
+
 
    public boolean isConditional()
    {
@@ -172,6 +178,7 @@ public class CacheItem implements Weighable {
       }
    }
 
+   // TODO make this an interface?
    public void passivate()
    {
       try {
