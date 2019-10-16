@@ -4,7 +4,7 @@
  * Created By: cfloersch
  * Date: 10/8/2019
  */
-package com.xpertss.cache;
+package com.xpertss.cache.http;
 
 import com.xpertss.cache.store.CacheItem;
 import org.springframework.http.HttpHeaders;
@@ -31,7 +31,7 @@ public class CachedHttpResponse implements ClientHttpResponse {
    public HttpStatus getStatusCode()
       throws IOException
    {
-      return cachedItem.getStatus();
+      return cachedItem.getHttpStatus();
    }
 
    @Override

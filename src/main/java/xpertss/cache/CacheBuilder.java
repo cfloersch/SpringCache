@@ -6,7 +6,7 @@
  */
 package xpertss.cache;
 
-import com.xpertss.cache.HttpResponseCache;
+import com.xpertss.cache.http.HttpResponseCache;
 import com.xpertss.cache.store.CacheStore;
 
 import xpertss.lang.Numbers;

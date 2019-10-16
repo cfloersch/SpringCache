@@ -43,6 +43,16 @@ Cache Versions
 
 
 
+Cache Rules
+   Cache evicts LRU items when its capacity reaches configured maximum. This is actually done
+   pre-emptively using the ensureCapacity method.
+
+   Cache may also utilize a max-stale-time where records that have been stale for more than
+   the configured max are evicted. This is to ensure we don't always sit at max disk capacity
+   even when many of the stale items may never be used again.
+
+
+
 Actual Cache
    Ideally the actual cache would be a ConcurrentMultiMap or some sort. The key would be the URL
    of the cache item. The value would be a set of one or more CacheItem instances. The CacheItem

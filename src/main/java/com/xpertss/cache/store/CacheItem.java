@@ -6,11 +6,13 @@
  */
 package com.xpertss.cache.store;
 
+import com.xpertss.cache.store.util.HttpUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import xpertss.cache.Visibility;
 import xpertss.lang.Integers;
-import xpertss.lang.Numbers;
+import xpertss.lang.Objects;
+import xpertss.lang.Strings;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,45 +22,84 @@ import java.nio.file.Path;
 
 import static java.nio.file.StandardOpenOption.*;
 
-public class CacheItem {
+/**
+ * TODO convert to an abstract class or interface
+ */
+public class CacheItem implements Weighable {
 
-   private long cached = System.currentTimeMillis();
+   private final HttpHeaders headers;
+   private final HttpStatus status;
+   private final Path cacheFile;
+
+   private long cached;
+   private Visibility visibility;
    private int maxAge = -1;
-
-   private String eTag;
-   private long lastModified;
 
    private boolean conditional;
    private boolean staleOnError;
-   private Visibility visibility;
 
-   private HttpHeaders headers;
-   private HttpStatus status;
+   private long lastModified;
+   private String eTag;
 
-   private Path cacheFile;
+
 
    // Technically isPublic, isPrivate, isConditional, isStale-While-Revalidate, isStale-If-Error could all be flags in a BitSet
 
-   public CacheItem()
+
+   private CacheItem(HttpStatus status, HttpHeaders headers, Path cacheFile)
    {
+      this.status = status;
+      this.headers = headers;
+      this.cacheFile = cacheFile;
    }
+
+   public CacheItem(CacheItemBuilder builder, HttpStatus status, HttpHeaders headers)
+   {
+      this.status = Objects.notNull(status, "status");
+      this.headers = HttpUtils.clone(Objects.notNull(headers, "headers"));
+      this.cacheFile = builder.getCacheFile();
+
+      this.cached = builder.getCached();
+      this.visibility = builder.getVisibility();
+      this.maxAge = builder.getMaxAge();
+      this.conditional = builder.isConditional();
+      this.staleOnError = builder.isStaleOnError();
+
+      this.eTag = builder.getETag();
+      this.lastModified = builder.getLastModified();
+   }
+
+
+
+
+   public HttpStatus getHttpStatus()
+   {
+      return status;
+   }
+
+   public HttpHeaders getHeaders()
+   {
+      HttpHeaders result = HttpUtils.clone(headers);
+      result.set("Age", Integer.toString(getAge()));
+      return result;
+   }
+
+   public Path getCacheFile()
+   {
+      return cacheFile;
+   }
+
+
+
+
 
    public long getCached()
    {
       return cached;
    }
 
-   public CacheItem withCached(long cached)
-   {
-      CacheItem copy = copy();
-      copy.cached = Numbers.gt(0L, cached, "cached");
-      return copy;
-   }
 
-
-
-
-   public boolean isExpired()
+   public boolean isStale()
    {
       return System.currentTimeMillis() > getExpires();
    }
@@ -68,20 +109,26 @@ public class CacheItem {
       return cached + (maxAge * 1000);
    }
 
-
-   public CacheItem withMaxAge(int maxAge)
-   {
-      CacheItem copy = copy();
-      copy.maxAge = Numbers.gte(0, maxAge, "maxAge");
-      return copy;
-   }
-
    public int getAge()
    {
       return Integers.safeCast((System.currentTimeMillis() - cached) / 1000);
    }
 
 
+   public boolean isConditional()
+   {
+      return conditional;
+   }
+
+   public boolean isStaleOnError()
+   {
+      return staleOnError;
+   }
+
+   public Visibility getVisibility()
+   {
+      return visibility;
+   }
 
 
 
@@ -91,115 +138,17 @@ public class CacheItem {
    {
       return lastModified;
    }
-
-   public CacheItem withLastModified(long lastModified)
-   {
-      CacheItem copy = copy();
-      copy.lastModified = lastModified;
-      return copy;
-   }
-
-
    public String getETag()
    {
       return eTag;
    }
 
-   public CacheItem withETag(String eTag)
+
+
+   public boolean isETag()
    {
-      CacheItem copy = copy();
-      copy.eTag = eTag;
-      return copy;
+      return !Strings.isEmpty(eTag);
    }
-
-
-
-
-   public boolean isConditional()
-   {
-      return conditional;
-   }
-
-   public CacheItem withConditional(boolean conditional)
-   {
-      CacheItem copy = copy();
-      copy.conditional = conditional;
-      return copy;
-   }
-
-   public boolean isStaleOnError()
-   {
-      return staleOnError;
-   }
-
-   public CacheItem withStaleOnError(boolean staleOnError)
-   {
-      CacheItem copy = copy();
-      copy.staleOnError = staleOnError;
-      return copy;
-   }
-
-   public Visibility getVisibility()
-   {
-      return visibility;
-   }
-
-   public CacheItem withVisibility(Visibility visibility)
-   {
-      CacheItem copy = copy();
-      copy.visibility = visibility;
-      return copy;
-   }
-
-
-
-
-   public HttpStatus getStatus()
-   {
-      return status;
-   }
-
-   public CacheItem withHttpStatus(HttpStatus status)
-   {
-      CacheItem copy = copy();
-      copy.status = status;
-      return copy;
-   }
-
-
-   public HttpHeaders getHeaders()
-   {
-      HttpHeaders result = new HttpHeaders();
-      result.addAll(headers);
-      result.set("Age", Integer.toString(getAge()));
-      return result;
-   }
-
-   public CacheItem withHeaders(HttpHeaders headers)
-   {
-      CacheItem copy = copy();
-      copy.headers = headers;
-      return copy;
-   }
-
-
-
-
-
-   public Path getCacheFile()
-   {
-      return cacheFile;
-   }
-
-   public CacheItem withCacheFile(Path cacheFile)
-   {
-      CacheItem copy = copy();
-      copy.cacheFile = cacheFile;
-      return copy;
-   }
-
-
-
 
 
 
@@ -213,6 +162,16 @@ public class CacheItem {
       return Files.newOutputStream(cacheFile, CREATE_NEW, WRITE);
    }
 
+   @Override
+   public int weigh()
+   {
+      try {
+         return Integers.safeCast(Files.size(cacheFile) / 1024);
+      } catch(Exception e) {
+         return 0;   // force the cache to reject the item
+      }
+   }
+
    public void passivate()
    {
       try {
@@ -223,21 +182,4 @@ public class CacheItem {
    }
 
 
-   
-
-   private CacheItem copy()
-   {
-      CacheItem copy = new CacheItem();
-      copy.cached = cached;
-      copy.maxAge = maxAge;
-      copy.eTag = eTag;
-      copy.lastModified = lastModified;
-      copy.conditional = conditional;
-      copy.staleOnError = staleOnError;
-      copy.visibility = visibility;
-      copy.headers = headers;
-      copy.status = status;
-      copy.cacheFile = cacheFile;
-      return copy;
-   }
 }

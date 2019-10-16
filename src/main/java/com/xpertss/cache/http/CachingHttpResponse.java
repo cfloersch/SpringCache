@@ -4,7 +4,7 @@
  * Created By: cfloersch
  * Date: 10/8/2019
  */
-package com.xpertss.cache;
+package com.xpertss.cache.http;
 
 import com.xpertss.cache.store.CacheItem;
 import com.xpertss.cache.store.CacheStore;

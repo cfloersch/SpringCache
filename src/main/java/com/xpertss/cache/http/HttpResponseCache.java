@@ -4,23 +4,20 @@
  * Created By: cfloersch
  * Date: 10/8/2019
  */
-package com.xpertss.cache;
+package com.xpertss.cache.http;
 
 import com.xpertss.cache.store.CacheItem;
 import com.xpertss.cache.store.CacheStore;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpResponse;
-import xpertss.cache.CacheControl;
 import xpertss.cache.CacheType;
 import xpertss.cache.CachingPolicy;
 import xpertss.cache.ResponseCache;
 import xpertss.lang.Objects;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Date;
+
 
 public class HttpResponseCache implements ResponseCache {
 
@@ -70,14 +67,18 @@ public class HttpResponseCache implements ResponseCache {
                }
             }
          }
-         // TODO If response is 304 then we need to locate and return the correct cache
-         //       update access info
-         //       update cache time
-         //    return CachedHttpResponse
-         // TODO If request had If-Modified-Since we will need to replace the existing cache
-         //    return CachingHttpResponse
-         // TODO If request has If-None-Match then we need to add the new cache item
-         //    return CachingHttpResponse
+         // TODO If request was conditional
+         // TODO   If response is 304 then we need to locate and return the correct cache
+         //          update access info
+         //          update cache time
+         //          return CachedHttpResponse
+         // TODO   Else If response is 200 then we need to replace the cache
+         // TODO     If request had If-Modified-Since
+         //            return CachingHttpResponse
+         // TODO     Else If request has If-None-Match then we need to add the new cache item
+         //            return CachingHttpResponse
+         // TODO   Else If response was 500, 502, 503, or 504 possibly return stale cache
+         //          return CachedHttpResponse
          // TODO Otherwise, we need to cache
          //    return CachingHttpResponse
       }
@@ -96,17 +97,7 @@ public class HttpResponseCache implements ResponseCache {
 
    private CacheItem createCacheItem(ClientHttpResponse response)
    {
-      CacheItem item = new CacheItem();
-
-      HttpHeaders headers = response.getHeaders();
-      CacheControl cc = CacheControl.valueOf(headers);
-
-      item = item.withETag(headers.getETag())
-               .withLastModified(new Date(headers.getLastModified()))
-               .withMaxAge(cc.getMaxAge(type))
-               .withConditional(cc.getMustRevalidate(type));
-      
-      return item;
+      return null;
    }
 
 

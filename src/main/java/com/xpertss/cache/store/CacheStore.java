@@ -61,16 +61,12 @@ public class CacheStore {
 
 
 
-
-
-
-
-   public CacheItem[] get(String key) throws IOException
+   public CacheItem[] get(String key)
    {
       return null;
    }
 
-   public void put(String key, CacheItem item) throws IOException
+   public void put(String key, CacheItem item)
    {
       // if item is last_updated then we replace any existing cached items (evicting the existing ones)
       // else
@@ -90,43 +86,7 @@ public class CacheStore {
 
 
 
-   // Remove and passivate all cache items associated with the given key
-   public void evict(String key)
-   {
-   }
 
-   // TODO Do I need an evictAll(String ... keys)
-
-   public void evictAll()
-   {
-      // evict all
-   }
-
-
-
-   public int keys()
-   {
-      return 0; // number of keys
-   }
-
-   public int items()
-   {
-      return 0;   // number of cache items
-   }
-
-   public long size()
-   {
-      return 0L;  // disk space used
-   }
-
-
-
-
-
-   public void clean()
-   {
-      // perform whatever background tasks need to be performed. (if any)
-   }
 
 
 
